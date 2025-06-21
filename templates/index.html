@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI News Delivery Agent with Favorites</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 AI News Agent + Favorites</h1>
+        <p>Select a category (only these work): <strong>business, entertainment, general, health, science, sports, technology</strong></p>
+        <input type="text" id="interests" placeholder="Enter category e.g., sports">
+        <button onclick="getNews()">Get News</button>
+        <button onclick="showFavorites()">View Favorites ⭐</button>
+        
+        <div id="news-results"></div>
+        <div id="favorites-results" style="display:none;"></div>
+    </div>
+
+    <script>
+        async function getNews() {
+            const interests = document.getElementById('interests').value.trim().toLowerCase();
+            const validCategories = ["business", "entertainment", "general", "health", "science", "sports", "technology"];
+
+            if (!validCategories.includes(interests)) {
+                alert("Invalid! Valid categories: " + validCategories.join(", "));
+                return;
+            }
+
+            const res = await fetch('/get_news', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({interests})
+            });
+
+            const data = await res.json();
+            if (data.error) {
+                alert(data.error);
+            } else {
+                displayNews(data.articles);
+            }
+        }
+
+        function displayNews(articles) {
+            const newsDiv = document.getElementById('news-results');
+            const favDiv = document.getElementById('favorites-results');
+            favDiv.style.display = 'none';
+            newsDiv.style.display = 'block';
+            newsDiv.innerHTML = '';
+            articles.forEach((article, index) => {
+                newsDiv.innerHTML += `
+                    <div class="card">
+                        <h3>${index+1}. ${article.title}</h3>
+                        <p>${article.description || "No description available."}</p>
+                        <a href="${article.url}" target="_blank">Read more</a><br>
+                        <button onclick='addToFavorites(${JSON.stringify(article)})'>Add to Favorites ⭐</button>
+                    </div>
+                `;
+            });
+        }
+
+        function addToFavorites(article) {
+            let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            if (!favorites.find(item => item.url === article.url)) {
+                favorites.push(article);
+                localStorage.setItem('favorites', JSON.stringify(favorites));
+                alert('Added to Favorites!');
+            } else {
+                alert('Already in Favorites!');
+            }
+        }
+
+        function showFavorites() {
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            const favDiv = document.getElementById('favorites-results');
+            const newsDiv = document.getElementById('news-results');
+            newsDiv.style.display = 'none';
+            favDiv.style.display = 'block';
+            favDiv.innerHTML = '<h2>Your Favorite Articles ⭐</h2>';
+            if (favorites.length === 0) {
+                favDiv.innerHTML += '<p>No favorites saved yet.</p>';
+                return;
+            }
+            favorites.forEach((article, index) => {
+                favDiv.innerHTML += `
+                    <div class="card">
+                        <h3>${index+1}. ${article.title}</h3>
+                        <p>${article.description || "No description available."}</p>
+                        <a href="${article.url}" target="_blank">Read more</a>
+                        <button onclick='removeFavorite("${article.url}")'>Remove ❌</button>
+                    </div>
+                `;
+            });
+        }
+
+        function removeFavorite(url) {
+            let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            favorites = favorites.filter(article => article.url !== url);
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+            showFavorites();
+        }
+    </script>
+</body>
+</html>
